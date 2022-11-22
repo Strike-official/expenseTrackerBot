@@ -82,7 +82,7 @@ def get_location_for_booking():
     
     return jsonify(strikeObj.Data())
 
-@app.route('//expenseTrackerBot/set/expense', methods=['POST'])
+@app.route('/expenseTrackerBot/set/expense', methods=['POST'])
 def respondBack():
     data = request.get_json()
     print(data)
@@ -90,8 +90,10 @@ def respondBack():
     amount_paid = data["user_session_variables"]["amount_paid"]
     
     category = data["user_session_variables"]["category"][0]
-    categoryArr = category.split(" ")
-    categoryPlain = categoryArr[1]
+    categoryPlain = "Other"
+    if category != "Other":
+        categoryArr = category.split(" ")
+        categoryPlain = categoryArr[1]
     
     discription = data["user_session_variables"]["discription"]
     split_method = data["user_session_variables"]["split_method"][0]
