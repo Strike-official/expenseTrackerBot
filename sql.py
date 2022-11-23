@@ -9,13 +9,13 @@ mydb = mysql.connector.connect(
   database=config.mysql_config["db"]
 )
 
-def get_ambulance_data():
+def get_expense(group_id):
   mydb.reconnect()
   mycursor = mydb.cursor()
-  mycursor.execute("SELECT * FROM med_alert_ambulance_details;")
+  mycursor.execute("SELECT * FROM expense_tracker where group_id='"+group_id+"';")
   myresult = mycursor.fetchall()
   mydb.commit()
-  print("[DB TOUCH] fetched ambulance details")
+  print("[DB TOUCH] fetched expense details")
   return myresult
 
 def update_ambulance_state(state,vehicle_number):

@@ -88,6 +88,7 @@ def respondBack():
     print(data)
     user_id = data["bybrisk_session_variables"]["userId"]
     amount_paid = data["user_session_variables"]["amount_paid"]
+    userName = data["bybrisk_session_variables"]["username"]
     
     category = data["user_session_variables"]["category"][0]
     categoryPlain = "Other"
@@ -102,13 +103,73 @@ def respondBack():
     ## Save to DB
     sql.add_expense(user_id,"FOUNDER",amount_paid,categoryPlain,discription,split_method)
 
+    text,color = compute_balence(user_id,userName)
+
     strikeObj = strike.Create("foodTrackBot","")
     question_card = strikeObj.Question("").\
             QuestionCard().\
             SetHeaderToQuestion(11,strike.HALF_WIDTH).\
             AddGraphicRowToQuestion(strike.PICTURE_ROW,["https://media.istockphoto.com/id/474551486/photo/3d-white-man-with-green-tick.jpg?s=612x612&w=0&k=20&c=aiPfi5CiH8Ru4jGy29Z4O_X9rDrykS5CanfoWtt0dRI="],[""]).\
-            AddTextRowToQuestion(strike.H4,"The expense has been recorded","#074d69",False)
+            AddTextRowToQuestion(strike.H4,"This expense has been added","#074d69",False).\
+            AddTextRowToQuestion(strike.H4,text,color,True)
+
+    return jsonify(strikeObj.Data())        
+
+
+@app.route('/expenseTrackerBot/get/distribution', methods=['POST'])
+def getDistribution():
+    data = request.get_json()
+    user_id = data["bybrisk_session_variables"]["userId"]
+    userName = data["bybrisk_session_variables"]["username"]
+
+    text,color = compute_balence(user_id,userName)                  
+
+    strikeObj = strike.Create("foodTrackBot","")
+    question_card = strikeObj.Question("").\
+            QuestionCard().\
+            SetHeaderToQuestion(11,strike.HALF_WIDTH).\
+            AddTextRowToQuestion(strike.H4,text,color,False)           
 
     return jsonify(strikeObj.Data())
 
-app.run(host='0.0.0.0', port=config.port)
+def not_user(users,username):
+   for user in users:
+     if user!=username:
+        return user
+
+def compute_balence(user_id,userName):
+    you_get = 0    
+    ## Get data from DB
+    expense_results = sql.get_expense("FOUNDER")
+    for expense_result in expense_results:
+      if expense_result[6] == "You paid, split equally":
+         if expense_result[1] == user_id:
+           you_get = you_get + (expense_result[3]/2)
+         else:
+           you_get = you_get + (-1*(expense_result[3]/2))
+      if expense_result[6] == "You are owed the full amount":
+         if expense_result[1] == user_id:
+           you_get = you_get + (expense_result[3])
+         else:
+           you_get = you_get + (-1*(expense_result[3]))  
+      for user in ["Sayak","Shashank"]:
+        if expense_result[6] == user+" paid, split equally":
+            if expense_result[1] == user_id:
+                you_get = you_get + (-1*(expense_result[3]/2))
+        if expense_result[6] == user+" is owed full amount":
+            if expense_result[1] == user_id:
+                you_get = you_get + (-1*expense_result[3])
+
+    users = ["Sayak","Shashank"]
+    if you_get > 0:
+        text = not_user(users,userName)+" owes you ₹"+str(you_get)
+        color =  "#3c8c2b"
+    if you_get < 0:
+        text = "You owe "+not_user(users,userName)+" ₹"+str((-1*you_get))
+        color =  "#ad1818"
+    if you_get == 0:
+        text = "Things are settled up. You owe nothing to "+not_user(users,userName)
+        color =  "#3c8c2b"    
+    return text,color                              
+
+app.run(host='0.0.0.0', port=config.port) 
