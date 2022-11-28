@@ -18,6 +18,15 @@ def get_expense(group_id):
   print("[DB TOUCH] fetched expense details")
   return myresult
 
+def get_all_expense_group(user_id):
+  mydb.reconnect()
+  mycursor = mydb.cursor()
+  mycursor.execute("SELECT * FROM expense_tracker_group_user_map where user_id='"+user_id+"';")
+  myresult = mycursor.fetchall()
+  mydb.commit()
+  print("[DB TOUCH] get_all_expense_group")
+  return myresult
+
 def update_ambulance_state(state,vehicle_number):
   mydb.reconnect()
   mycursor = mydb.cursor()
