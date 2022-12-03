@@ -27,28 +27,29 @@ def get_all_expense_group(user_id):
   print("[DB TOUCH] get_all_expense_group")
   return myresult
 
-def update_ambulance_state(state,vehicle_number):
+def get_users_by_group(group_id):
   mydb.reconnect()
   mycursor = mydb.cursor()
-  sql = "UPDATE med_alert_ambulance_details SET state = '"+state+"' WHERE vehicle_number = '"+vehicle_number+"'"
-  mycursor.execute(sql)
-  mydb.commit()
-  print("[DB TOUCH] updated status of "+vehicle_number+" to "+state)
-
-def get_available_ambulance():
-  mydb.reconnect()
-  mycursor = mydb.cursor()
-  mycursor.execute("select * from med_alert_ambulance_details where state='available';")
+  mycursor.execute("select * from expense_tracker_group_user_map where group_id='"+group_id+"';")
   myresult = mycursor.fetchall()
   mydb.commit()
-  print("[DB TOUCH] fetched available ambulances")
+  print("[DB TOUCH] fetched group members of group "+group_id)
   return myresult
 
-def add_expense(user_id_of_updater,group_id,amount_paid,category,discription,split_method):  
+def add_expense(user_id_of_updater,group_id,amount_paid,category,discription,split_method,who_paid,split_among):  
   mydb.reconnect()
   mycursor = mydb.cursor()
-  sql = "insert into expense_tracker (user_id_of_updater,group_id,amount_paid,category,discription,split_method) values ('"+user_id_of_updater+"','"+group_id+"',"+amount_paid+",'"+category+"','"+discription+"','"+split_method+"')"
+  sql = "insert into expense_tracker (user_id_of_updater,group_id,amount_paid,category,discription,split_method,who_paid,split_among) values ('"+user_id_of_updater+"','"+group_id+"',"+amount_paid+",'"+category+"','"+discription+"','"+split_method+"','"+who_paid+"','"+split_among+"')"
   mycursor.execute(sql)
   mydb.commit()
   print("SQL query -------> "+sql)
   print("[DB TOUCH] Added expense to food_track table ")
+
+def register_user(group_id,user_id, user_name):  
+  mydb.reconnect()
+  mycursor = mydb.cursor()
+  sql = "insert into expense_tracker_group_user_map (group_id,user_id, username) values ('"+group_id+"','"+user_id+"','"+user_name+"')"
+  mycursor.execute(sql)
+  mydb.commit()
+  print("SQL query -------> "+sql)
+  print("[DB TOUCH] Added user "+user_id+" to group "+group_id)
