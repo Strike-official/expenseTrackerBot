@@ -5,6 +5,7 @@ import requests
 from flask import jsonify
 from flask import request
 import sql
+import notification
 import group.group as group
 import interface.interface as interface
 import interface.helper as helper
@@ -32,6 +33,7 @@ def respondBack():
     data = request.get_json()
     print(data)
     user_id = data["bybrisk_session_variables"]["userId"]
+    app_id = data["bybrisk_session_variables"]["businessId"]
     amount_paid = data["user_session_variables"]["amount_paid"]
     userName = data["bybrisk_session_variables"]["username"]
     group_id = request.args.get('group_id')
@@ -51,6 +53,10 @@ def respondBack():
         split_method_who_paid = helper.get_who_paid_string_litral(data,userName)
         split_method_split_among_str = helper.get_among_who_string_literal(data)  
         sql.add_expense(user_id,group_id,amount_paid,categoryPlain,discription,"GROUP",split_method_who_paid,split_method_split_among_str)
+        notification_text = userName+" added ₹"+amount_paid+" for "+discription+"\nSplitted-Among: "+split_method_split_among_str+"\nPaid-By:"+split_method_who_paid
+        users = getUsersForGroup(group_id, split_method_split_among_str, user_id)
+        for uid in users:
+            notification.push(uid, app_id, notification_text)
     ## Save to DB
     
 
@@ -154,5 +160,18 @@ def get_action():
         strikeObj = helper.get_group_and_set_expense(user_id,username)
 
     return jsonify(strikeObj.Data())
+
+def getUsersForGroup(group_id, split_among, current_user_id):
+    split_among_users = split_among.split("|")
+    users = {
+        "Shashi":"6392e3b6040e6322f17cbb7f",
+        "Sayak":"623e12d995ba637fe92fb079",
+        "Shashank":"623efb9195ba637fe92fb07b"
+    }
+    targetUsers = []
+    for u in users:
+        if u in split_among_users and users[u] != current_user_id:
+            targetUsers.append(users[u])
+    return targetUsers
 
 app.run(host='0.0.0.0', port=config.port) 
