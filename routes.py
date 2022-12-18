@@ -31,12 +31,11 @@ def get_expense():
 @app.route('/expenseTrackerBot/set/expense', methods=['POST'])
 def respondBack():
     data = request.get_json()
-    print(data)
     user_id = data["bybrisk_session_variables"]["userId"]
     app_id = data["bybrisk_session_variables"]["businessId"]
     amount_paid = data["user_session_variables"]["amount_paid"]
     userName = data["bybrisk_session_variables"]["username"]
-    group_id = request.args.get('group_id')
+    group_id = request.args.get('group_name')
     
     category = data["user_session_variables"]["category"][0]
     categoryPlain = "Other"
@@ -52,15 +51,15 @@ def respondBack():
     else:
         split_method_who_paid = helper.get_who_paid_string_litral(data,userName)
         split_method_split_among_str = helper.get_among_who_string_literal(data)  
-        sql.add_expense(user_id,group_id,amount_paid,categoryPlain,discription,"GROUP",split_method_who_paid,split_method_split_among_str)
+        expense_id = sql.add_expense(user_id,group_id,amount_paid,categoryPlain,discription,"GROUP",split_method_who_paid,split_method_split_among_str)
+        helper.addToTransactionLedger(expense_id, group_id, split_method_who_paid,split_method_split_among_str, amount_paid)
         notification_text = userName+" added ₹"+amount_paid+" for "+discription+"\nSplitted-Among: "+split_method_split_among_str+"\nPaid-By:"+split_method_who_paid
-        users = getUsersForGroup(group_id, split_method_split_among_str, user_id)
+        users = helper.getTargetUsersForGroup(group_id, split_method_split_among_str, user_id)
         for uid in users:
             notification.push(uid, app_id, notification_text)
     ## Save to DB
     
-
-    ##text,color = compute_balence(user_id,userName)
+    # txt,color = helper.compute_ledger_balence(user_id)
 
     strikeObj = strike.Create("foodTrackBot",baseAPI+"/expenseTrackerBot/get/action?group_id="+group_id)
     question_card = strikeObj.Question("action").\
@@ -69,6 +68,17 @@ def respondBack():
             AddGraphicRowToQuestion(strike.PICTURE_ROW,["https://media.istockphoto.com/id/474551486/photo/3d-white-man-with-green-tick.jpg?s=612x612&w=0&k=20&c=aiPfi5CiH8Ru4jGy29Z4O_X9rDrykS5CanfoWtt0dRI="],[""]).\
             AddTextRowToQuestion(strike.H4,"I added the expense to "+group_id,"#074d69",False)
             ##AddTextRowToQuestion(strike.H4,text,color,True)
+    
+    txt,color = helper.compute_ledger_balence(user_id) 
+
+    for i in range(len(txt)):
+            if i==0:
+                question_card.AddTextRowToQuestion(strike.H3,txt[i],color[i],False)
+                question_card.AddTextRowToQuestion(strike.H6,"","",False)
+            else:
+                question_card.AddTextRowToQuestion(strike.H4,txt[i],color[i],False)
+
+
     action_answer_card = question_card.Answer(False).AnswerCardArray(strike.VERTICAL_ORIENTATION)
     action_answer_card = action_answer_card.AnswerCard().\
             SetHeaderToAnswer(1,"WRAP").\
@@ -86,13 +96,19 @@ def getDistribution():
     user_id = data["bybrisk_session_variables"]["userId"]
     userName = data["bybrisk_session_variables"]["username"]
 
-    text,color = compute_balence(user_id,userName)                  
+    txt,color = helper.compute_ledger_balence(user_id) 
 
     strikeObj = strike.Create("foodTrackBot","")
     question_card = strikeObj.Question("").\
             QuestionCard().\
-            SetHeaderToQuestion(11,strike.HALF_WIDTH).\
-            AddTextRowToQuestion(strike.H4,text,color,False)           
+            SetHeaderToQuestion(11,"WRAP")
+    for i in range(len(txt)):
+            if i==0:
+                question_card.AddTextRowToQuestion(strike.H3,txt[i],color[i],False)
+                question_card.AddTextRowToQuestion(strike.H6,"","",False)
+            else:
+                question_card.AddTextRowToQuestion(strike.H4,txt[i],color[i],False)
+
 
     return jsonify(strikeObj.Data())
 
@@ -136,12 +152,17 @@ def compute_balence(user_id,userName):
         color =  "#3c8c2b"    
     return text,color   
 
+
+
+
 @app.route('/expenseTrackerBot/register/user', methods=['POST'])
 def register_user():
     data = request.get_json()
-    group_id = request.args.get('group_id')
-    helper.insert_first_member(data,group_id)
-    strikeObj = interface.interface_after_group_created(data,group_id)
+    group_name = request.args.get('group_name')
+    user_id = data["bybrisk_session_variables"]["userId"]
+    helper.setGroupForUid(user_id,group_name)
+    helper.insert_first_member(data,group_name)
+    strikeObj = interface.interface_after_group_created(data,group_name)
     return jsonify(strikeObj.Data())
 
 @app.route('/expenseTrackerBot/get/action', methods=['POST'])
@@ -161,17 +182,9 @@ def get_action():
 
     return jsonify(strikeObj.Data())
 
-def getUsersForGroup(group_id, split_among, current_user_id):
-    split_among_users = split_among.split("|")
-    users = {
-        "Shashi":"6392e3b6040e6322f17cbb7f",
-        "Sayak":"623e12d995ba637fe92fb079",
-        "Shashank":"623efb9195ba637fe92fb07b"
-    }
-    targetUsers = []
-    for u in users:
-        if u in split_among_users and users[u] != current_user_id:
-            targetUsers.append(users[u])
-    return targetUsers
 
-app.run(host='0.0.0.0', port=config.port) 
+if __name__ == "__main__":
+    helper.populateGroupForUid()
+    helper.populateInMemLedger()
+    # helper.populateLedgerFromOlderData()
+    app.run(host='0.0.0.0', port=config.port) 
