@@ -9,7 +9,7 @@ baseAPI=config.baseAPI
 def set_interface_for_new_user(username):
     print(username+" is a New User")
     strikeObj = strike.Create("expenseTrackerBot",baseAPI+"/expenseTrackerBot/register/user?group_id=NA")  
-    group_id_question = strikeObj.Question("group_id").\
+    group_id_question = strikeObj.Question("group_name").\
                 QuestionText().\
                 SetTextToQuestion("Hi "+username+", please enter a name for your new group?")
     group_id_question.Answer(False).TextInput()
@@ -29,7 +29,7 @@ def set_interface_for_new_user(username):
 def interface_after_group_created(data,group_id):
     user_name = data["bybrisk_session_variables"]["username"]
     if group_id == "NA":
-       group_id = data["user_session_variables"]["group_id"]
+       group_id = data["user_session_variables"]["group_name"]
 
     other_memeber_user_name = data["user_session_variables"]["first_member_name"]
         
@@ -62,11 +62,13 @@ def interface_to_add_more_member(data,group_id):
 
 def set_interface_for_getting_expense_single_group(user_id,group_ids):
 
+    print("----------GROUP IDS------------")
+    print(group_ids)
     users = group.get_all_user_by_group(group_ids[0][1])
     updater = helper.get_updater(users,user_id)
    
     ## Get the basic interface
-    strikeObj = strike.Create("expenseTrackerBot",baseAPI+"/expenseTrackerBot/set/expense?group_id="+group_ids[0][1])  
+    strikeObj = strike.Create("expenseTrackerBot",baseAPI+"/expenseTrackerBot/set/expense?group_name="+group_ids[0][1])  
     strikeObj = basic_interface(strikeObj,updater)       
 
     if len(users) == 2:
